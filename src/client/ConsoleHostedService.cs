@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Grpc.Core;
-using Grpc.Net.Client;
 using Microsoft.Extensions.Hosting;
-using Polly;
 using Serilog;
 using server;
 
@@ -15,10 +12,13 @@ namespace client
         private readonly IHostApplicationLifetime _appLifetime;
         private readonly ILogger _logger;
         private int? _exitCode;
+        //private readonly GreeterService _greeterService;
+        private readonly Greeter.GreeterClient _greeterService;
 
-        public ConsoleHostedService(IHostApplicationLifetime appLifetime, ILogger logger)
+        public ConsoleHostedService(IHostApplicationLifetime appLifetime, ILogger logger, Greeter.GreeterClient greeterService)
         {
             _appLifetime = appLifetime;
+            _greeterService = greeterService;
             _logger = logger;
         }
 
@@ -30,34 +30,14 @@ namespace client
                 {
                     try
                     {
-                        _logger.Information("Hello grpc!");
-
-                        var channel = GrpcChannel.ForAddress("https://localhost:5001");
-                        var client = new Greeter.GreeterClient(channel);
-
-                        var reply = await Policy.Handle<RpcException>((rpcException) =>
-                            {
-                                _logger.Error(rpcException,"Failed to call Grpc service. {Status}", rpcException.StatusCode);
-                                return rpcException.StatusCode == StatusCode.DeadlineExceeded;
-                            }).WaitAndRetryAsync(3, (input) =>
-                            {
-                                _logger.Information("Retrying GRPC call in {seconds}", input + 3);
-
-                                channel.Dispose();
-                                channel = GrpcChannel.ForAddress("https://localhost:5001");
-                                client = new Greeter.GreeterClient(channel);
-
-                                return TimeSpan.FromSeconds(3 + input);
-                            })
-                            .ExecuteAsync<HelloReply>(async () =>
-                            {
-                                return await client.SayHelloAsync(
-                                    request: new HelloRequest { Name = "Me!" },
-                                    deadline: DateTime.Now.AddSeconds(1).ToUniversalTime()
-                                );
-                            });
-
-
+                        var result = await _greeterService.SayHelloAsync(
+                            new HelloRequest {Name = "ME"},
+                            deadline: DateTime.Now.AddSeconds(1).ToUniversalTime());
+                            
+                       
+                        //var result = await _greeterService.SayHello("ME");
+                        
+                        Console.WriteLine(result.Message);
                         _exitCode = 0;
                     }
                     catch (Exception ex)

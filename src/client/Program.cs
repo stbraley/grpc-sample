@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using client.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -7,6 +8,7 @@ using Serilog;
 using Serilog.Core;
 using Steeltoe.Discovery.Client;
 using Steeltoe.Discovery.Eureka;
+using Polly;
 
 namespace client
 {
@@ -58,6 +60,10 @@ namespace client
                     services.AddHostedService<ConsoleHostedService>();
                     services.AddSingleton<ILogger>(Log.Logger);
                     services.AddGrpc();
+
+                    //services.AddAppServices();
+                    services.AddGrpcClients();
+
                 })
                 .UseSerilog((builderContext, loggerConfiguration) =>
                 {
